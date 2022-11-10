@@ -5225,6 +5225,31 @@ class spell_gen_despawn_all_summons_owned_by_caster : public SpellScript
     }
 };
 
+// Personal resurrections in battlegrounds
+// 156758 - Spirit Heal
+class spell_gen_spirit_heal : public AuraScript
+{
+    static constexpr uint32 SPELL_SPIRIT_HEAL_EFFECT = 156763;
+
+    PrepareAuraScript(spell_gen_spirit_heal);
+
+    void OnRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    {
+        if (GetTargetApplication()->GetRemoveMode() != AURA_REMOVE_BY_EXPIRE)
+            return;
+
+        if (Unit* owner = GetUnitOwner())
+            if (Player* playerOwner = owner->ToPlayer())
+                if (Unit* caster = GetCaster())
+                    caster->CastSpell(playerOwner, SPELL_SPIRIT_HEAL_EFFECT);
+    }
+
+    void Register() override
+    {
+        AfterEffectRemove += AuraEffectRemoveFn(spell_gen_spirit_heal::OnRemove, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
+    }
+};
+
 void AddSC_generic_spell_scripts()
 {
     RegisterSpellScript(spell_gen_absorb0_hitlimit1);
@@ -5386,4 +5411,5 @@ void AddSC_generic_spell_scripts()
     RegisterSpellScript(spell_gen_eject_passengers_3_8);
     RegisterSpellScript(spell_gen_reverse_cast_target_to_caster_triggered);
     RegisterSpellScript(spell_gen_despawn_all_summons_owned_by_caster);
+    RegisterSpellScript(spell_gen_spirit_heal);
 }
