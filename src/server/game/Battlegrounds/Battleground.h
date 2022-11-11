@@ -113,6 +113,7 @@ enum BattlegroundSpells
     SPELL_MERCENARY_ALLIANCE_1      = 193863,
     SPELL_MERCENARY_ALLIANCE_REACTIONS = 195843,
     SPELL_MERCENARY_SHAPESHIFT      = 193970,
+    SPELL_PET_SUMMONED              = 6962 // used after resurrection
 };
 
 enum BattlegroundTimeIntervals
