@@ -360,7 +360,6 @@ void Creature::RemoveFromWorld()
 
         if (m_spawnId)
             Trinity::Containers::MultimapErasePair(GetMap()->GetCreatureBySpawnIdStore(), m_spawnId, this);
-
         GetMap()->GetObjectsStore().Remove<Creature>(GetGUID());
     }
 }
