@@ -2,10 +2,10 @@ name: windows-build
 
 on:
   push:
-    branches: [ master, development, original-tc ]
+    branches: [ master, development ]
     paths-ignore:
       - 'sql/**'
-
+      
 concurrency:
   group: ${{ github.head_ref }} || concat(${{ github.ref }}, ${{ github.workflow }})
   cancel-in-progress: true
@@ -16,14 +16,14 @@ env:
   BUILD_TYPE: Release
   REPO_DIR : ${{github.workspace}}
   BUILD_DIR: ${{github.workspace}}/bin/builddir
-  BOOST_TOOLSET: "msvc14.1"
+  BOOST_TOOLSET: "msvc14.2"
   BOOST_VERSION: "1.73.0"
   BOOST_INSTALL_DIR: "${{github.workspace}}/bin"
-
+  
 jobs:
   build:
     runs-on: windows-2019
-
+    
     steps:
     #git checkout
     - uses: actions/checkout@v2
@@ -31,7 +31,7 @@ jobs:
     - uses: FranzDiebold/github-env-vars-action@v2
     - name: Create Build Environment
       run: |
-        echo "BOOST_ROOT=${{env.BOOST_INSTALL_DIR}}/boost/boost-${{env.BOOST_VERSION}}-win64-${{env.BOOST_TOOLSET}}-x86_64" >> $env:GITHUB_ENV
+        echo "BOOST_ROOT=${{env.BOOST_INSTALL_DIR}}/boost/boost-${{env.BOOST_VERSION}}-win32-${{env.BOOST_TOOLSET}}-x86_64" >> $env:GITHUB_ENV
         echo "ARCHIVE_FILENAME=$env:CI_REPOSITORY_NAME-${{matrix.TYPE}}-$env:CI_SHA_SHORT.zip" >> $env:GITHUB_ENV
         cmake -E make_directory ${{ env.BUILD_DIR }}
     # install dependencies
