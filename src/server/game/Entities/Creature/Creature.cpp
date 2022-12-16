@@ -3015,6 +3015,20 @@ uint32 Creature::GetScriptId() const
     return ASSERT_NOTNULL(sObjectMgr->GetCreatureTemplate(GetEntry()))->ScriptID;
 }
 
+std::string Creature::GetStringId() const
+{
+    return sObjectMgr->GetStringId(GetStringIdIndex());
+}
+
+uint32 Creature::GetStringIdIndex() const
+{
+    if (CreatureData const* creatureData = GetCreatureData())
+        if (uint32 stringIdIndex = creatureData->StringIdIndex)
+            return stringIdIndex;
+
+    return ASSERT_NOTNULL(sObjectMgr->GetCreatureTemplate(GetEntry()))->StringIdIndex;
+}
+
 VendorItemData const* Creature::GetVendorItems() const
 {
     return sObjectMgr->GetNpcVendorItemList(GetEntry());
