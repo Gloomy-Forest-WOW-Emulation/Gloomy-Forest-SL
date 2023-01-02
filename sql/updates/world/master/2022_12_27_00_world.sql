@@ -11,3 +11,4 @@ UPDATE `player_classlevelstats` SET `VerifiedBuild`=47213 WHERE (`class`=12 AND 
 UPDATE `player_classlevelstats` SET `VerifiedBuild`=47213 WHERE (`class`=12 AND `level`=66);
 UPDATE `player_classlevelstats` SET `VerifiedBuild`=47213 WHERE (`class`=12 AND `level`=67);
 UPDATE `player_classlevelstats` SET `VerifiedBuild`=47213 WHERE (`class`=12 AND `level`=68);
+
