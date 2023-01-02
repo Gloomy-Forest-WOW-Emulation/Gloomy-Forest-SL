@@ -20,12 +20,14 @@
 // Ruby Life Pools
 void AddSC_instance_ruby_life_pools();
 void AddSC_ruby_life_pools();
+void AddSC_zone_the_forbidden_reach();
+
 
 // The name of this function should match:
 // void Add${NameOfDirectory}Scripts()
 void AddDragonIslesScripts()
 {
-    // Ruby Life Pools
     AddSC_instance_ruby_life_pools();
     AddSC_ruby_life_pools();
+    AddSC_zone_the_forbidden_reach();
 }
