@@ -338,6 +338,10 @@ void Creature::AddToWorld()
 
         if (GetZoneScript())
             GetZoneScript()->OnCreatureCreate(this);
+
+        if (BattlegroundMap* bgMap = GetMap()->ToBattlegroundMap())
+            if (Battleground* bg = bgMap->GetBG())
+                bg->OnCreatureCreate(this);
     }
 }
 
@@ -347,6 +351,10 @@ void Creature::RemoveFromWorld()
     {
         if (GetZoneScript())
             GetZoneScript()->OnCreatureRemove(this);
+
+        if (BattlegroundMap* bgMap = GetMap()->ToBattlegroundMap())
+            if (Battleground* bg = bgMap->GetBG())
+                bg->OnCreatureRemove(this);
 
         if (m_formation)
             sFormationMgr->RemoveCreatureFromGroup(m_formation, this);
@@ -689,8 +697,6 @@ bool Creature::UpdateEntry(uint32 entry, CreatureData const* data /*= nullptr*/,
 
     //We must update last scriptId or it looks like we reloaded a script, breaking some things such as gossip temporarily
     LastUsedScriptID = GetScriptId();
-
-    m_stringIds[0] = cInfo->StringId;
 
     return true;
 }
@@ -1812,8 +1818,6 @@ bool Creature::LoadFromDB(ObjectGuid::LowType spawnId, Map* map, bool addToMap, 
 
     // checked at creature_template loading
     m_defaultMovementType = MovementGeneratorType(data->movementType);
-
-    m_stringIds[1] = data->StringId;
 
     if (addToMap && !GetMap()->AddToMap(this))
         return false;
@@ -3014,23 +3018,18 @@ uint32 Creature::GetScriptId() const
     return ASSERT_NOTNULL(sObjectMgr->GetCreatureTemplate(GetEntry()))->ScriptID;
 }
 
-bool Creature::HasStringId(std::string_view id) const
+std::string Creature::GetStringId() const
 {
-    return std::find(m_stringIds.begin(), m_stringIds.end(), id) != m_stringIds.end();
+    return sObjectMgr->GetStringId(GetStringIdIndex());
 }
 
-void Creature::SetScriptStringId(std::string id)
+uint32 Creature::GetStringIdIndex() const
 {
-    if (!id.empty())
-    {
-        m_scriptStringId.emplace(std::move(id));
-        m_stringIds[2] = *m_scriptStringId;
-    }
-    else
-    {
-        m_scriptStringId.reset();
-        m_stringIds[2] = {};
-    }
+    if (CreatureData const* creatureData = GetCreatureData())
+        if (uint32 stringIdIndex = creatureData->StringIdIndex)
+            return stringIdIndex;
+
+    return ASSERT_NOTNULL(sObjectMgr->GetCreatureTemplate(GetEntry()))->StringIdIndex;
 }
 
 VendorItemData const* Creature::GetVendorItems() const
@@ -3389,18 +3388,19 @@ void Creature::DoNotReacquireSpellFocusTarget()
 
 bool Creature::IsMovementPreventedByCasting() const
 {
+    // Can always move when not casting
+    if (!HasUnitState(UNIT_STATE_CASTING))
+        return false;
+
     // first check if currently a movement allowed channel is active and we're not casting
     if (Spell* spell = m_currentSpells[CURRENT_CHANNELED_SPELL])
     {
         if (spell->getState() != SPELL_STATE_FINISHED && spell->IsChannelActive())
             if (spell->CheckMovement() != SPELL_CAST_OK)
-                return false;
+                return true;
     }
 
     if (HasSpellFocus())
-        return true;
-
-    if (HasUnitState(UNIT_STATE_CASTING))
         return true;
 
     return false;

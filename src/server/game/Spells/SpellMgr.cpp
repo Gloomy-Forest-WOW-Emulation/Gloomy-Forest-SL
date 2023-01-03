@@ -4631,10 +4631,28 @@ void SpellMgr::LoadSpellInfoCorrections()
         });
     });
 
+    // Fire Cannon
+    ApplySpellFix({ 181593 }, [](SpellInfo* spellInfo)
+    {
+        ApplySpellEffectFix(spellInfo, EFFECT_0, [](SpellEffectInfo* spellEffectInfo)
+        {
+            spellEffectInfo->TriggerSpell = 0;
+        });
+    });
+
     // Ray of Frost (Fingers of Frost charges)
     ApplySpellFix({ 269748 }, [](SpellInfo* spellInfo)
     {
         spellInfo->AttributesEx &= ~SPELL_ATTR1_IS_CHANNELLED;
+    });
+
+    // Hot Rod Radio
+    ApplySpellFix({ 66298 }, [](SpellInfo* spellInfo)
+    {
+        ApplySpellEffectFix(spellInfo, EFFECT_0, [](SpellEffectInfo* spellEffectInfo)
+        {
+            spellEffectInfo->TargetA = SpellImplicitTargetInfo(TARGET_UNIT_PASSENGER_0);
+        });
     });
 
     for (SpellInfo const& s : mSpellInfoMap)
