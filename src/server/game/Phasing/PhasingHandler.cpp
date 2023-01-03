@@ -38,6 +38,12 @@
 namespace
 {
 PhaseShift const Empty;
+PhaseShift const AlwaysVisible = []
+{
+    PhaseShift phaseShift;
+    PhasingHandler::InitDbPhaseShift(phaseShift, PHASE_USE_FLAGS_ALWAYS_VISIBLE, 0, 0);
+    return phaseShift;
+}();
 
 inline PhaseFlags GetPhaseFlags(uint32 phaseId)
 {
@@ -361,7 +367,7 @@ void PhasingHandler::OnAreaChange(WorldObject* object)
     UpdateVisibilityIfNeeded(object, true, changed);
 }
 
-void PhasingHandler::OnConditionChange(WorldObject* object, bool updateVisibility /*= true*/)
+void PhasingHandler::OnConditionChange(WorldObject* object)
 {
     PhaseShift& phaseShift = object->GetPhaseShift();
     PhaseShift& suppressedPhaseShift = object->GetSuppressedPhaseShift();
@@ -473,7 +479,7 @@ void PhasingHandler::OnConditionChange(WorldObject* object, bool updateVisibilit
             unit->RemoveNotOwnSingleTargetAuras(true);
     }
 
-    UpdateVisibilityIfNeeded(object, updateVisibility, changed);
+    UpdateVisibilityIfNeeded(object, true, changed);
 }
 
 void PhasingHandler::SendToPlayer(Player const* player, PhaseShift const& phaseShift)
@@ -512,6 +518,11 @@ void PhasingHandler::FillPartyMemberPhase(WorldPackets::Party::PartyMemberPhaseS
 PhaseShift const& PhasingHandler::GetEmptyPhaseShift()
 {
     return Empty;
+}
+
+PhaseShift const& PhasingHandler::GetAlwaysVisiblePhaseShift()
+{
+    return AlwaysVisible;
 }
 
 void PhasingHandler::InitDbPhaseShift(PhaseShift& phaseShift, uint8 phaseUseFlags, uint16 phaseId, uint32 phaseGroupId)
