@@ -26,7 +26,6 @@
 #include "Chat.h"
 #include "Common.h"
 #include "Creature.h"
-#include "CreatureAI.h"
 #include "DB2Stores.h"
 #include "DisableMgr.h"
 #include "Group.h"
@@ -659,13 +658,11 @@ void WorldSession::HandleAreaSpiritHealerQueryOpcode(WorldPackets::Battleground:
     if (!unit->IsSpiritService())                            // it's not spirit service
         return;
 
-    if (unit->AI()->OnSpiritHealerQuery(_player))
-        return;
+    if (Battleground* bg = _player->GetBattleground())
+        sBattlegroundMgr->SendAreaSpiritHealerQueryOpcode(_player, bg, areaSpiritHealerQuery.HealerGuid);
 
     if (Battlefield* bf = sBattlefieldMgr->GetBattlefieldToZoneId(_player->GetMap(), _player->GetZoneId()))
         bf->SendAreaSpiritHealerQueryOpcode(_player, areaSpiritHealerQuery.HealerGuid);
-    else
-        _player->SendAreaSpiritHealerQueryOpcode(areaSpiritHealerQuery.HealerGuid);
 }
 
 void WorldSession::HandleAreaSpiritHealerQueueOpcode(WorldPackets::Battleground::AreaSpiritHealerQueue& areaSpiritHealerQueue)
@@ -677,12 +674,11 @@ void WorldSession::HandleAreaSpiritHealerQueueOpcode(WorldPackets::Battleground:
     if (!unit->IsSpiritService())                            // it's not spirit service
         return;
 
-    unit->AI()->OnSpiritHealerQueue(_player);
+    if (Battleground* bg = _player->GetBattleground())
+        bg->AddPlayerToResurrectQueue(areaSpiritHealerQueue.HealerGuid, _player->GetGUID());
 
     if (Battlefield* bf = sBattlefieldMgr->GetBattlefieldToZoneId(_player->GetMap(), _player->GetZoneId()))
         bf->AddPlayerToResurrectQueue(areaSpiritHealerQueue.HealerGuid, _player->GetGUID());
-    else
-        _player->SetSpiritHealer(unit);
 }
 
 void WorldSession::HandleHearthAndResurrect(WorldPackets::Battleground::HearthAndResurrect& /*hearthAndResurrect*/)
