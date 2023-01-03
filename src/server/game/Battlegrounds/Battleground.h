@@ -114,7 +114,6 @@ enum BattlegroundSpells
     SPELL_MERCENARY_ALLIANCE_1      = 193863,
     SPELL_MERCENARY_ALLIANCE_REACTIONS = 195843,
     SPELL_MERCENARY_SHAPESHIFT      = 193970,
-    SPELL_PET_SUMMONED              = 6962 // used after resurrection
 };
 
 enum BattlegroundTimeIntervals
@@ -286,6 +285,7 @@ class TC_GAME_API Battleground : public ZoneScript
         uint32 GetClientInstanceID() const  { return m_ClientInstanceID; }
         uint32 GetElapsedTime() const       { return m_StartTime; }
         uint32 GetRemainingTime() const     { return m_EndTime; }
+        uint32 GetLastResurrectTime() const { return m_LastResurrectTime; }
         uint32 GetMaxPlayers() const;
         uint32 GetMinPlayers() const;
 
@@ -312,6 +312,7 @@ class TC_GAME_API Battleground : public ZoneScript
         void SetClientInstanceID(uint32 InstanceID) { m_ClientInstanceID = InstanceID; }
         void SetElapsedTime(uint32 Time)        { m_StartTime = Time; }
         void SetRemainingTime(uint32 Time)      { m_EndTime = Time; }
+        void SetLastResurrectTime(uint32 Time) { m_LastResurrectTime = Time; }
         void SetRated(bool state)           { m_IsRated = state; }
         void SetArenaType(uint8 type)       { m_ArenaType = type; }
         void SetWinner(PvPTeamId winnerTeamId) { _winnerTeamId = winnerTeamId; }
@@ -340,6 +341,14 @@ class TC_GAME_API Battleground : public ZoneScript
 
         typedef std::map<ObjectGuid, BattlegroundScore*> BattlegroundScoreMap;
         uint32 GetPlayerScoresSize() const { return uint32(PlayerScores.size()); }
+
+        uint32 GetReviveQueueSize() const { return uint32(m_ReviveQueue.size()); }
+
+        void AddPlayerToResurrectQueue(ObjectGuid npc_guid, ObjectGuid player_guid);
+        void RemovePlayerFromResurrectQueue(ObjectGuid player_guid);
+
+        /// Relocate all players in ReviveQueue to the closest graveyard
+        void RelocateDeadPlayers(ObjectGuid guideGuid);
 
         void StartBattleground();
 
@@ -492,12 +501,6 @@ class TC_GAME_API Battleground : public ZoneScript
         void AddPlayerPosition(WorldPackets::Battleground::BattlegroundPlayerPosition const& position);
         void RemovePlayerPosition(ObjectGuid guid);
 
-        virtual void OnCreatureCreate(Creature* /*creature*/) { }
-        virtual void OnCreatureRemove(Creature* /*creature*/) { }
-
-        virtual void OnGameObjectCreate(GameObject* /*gameObject*/) { }
-        virtual void OnGameObjectRemove(GameObject* /*gameObject*/) { }
-
     protected:
         // this method is called, when BG cannot spawn its own spirit guide, or something is wrong, It correctly ends Battleground
         void EndNow();
@@ -539,6 +542,7 @@ class TC_GAME_API Battleground : public ZoneScript
         virtual void PostUpdateImpl(uint32 /* diff */) { }
 
         void _ProcessOfflineQueue();
+        void _ProcessResurrect(uint32 diff);
         void _ProcessProgress(uint32 diff);
         void _ProcessLeave(uint32 diff);
         void _ProcessJoin(uint32 diff);
@@ -579,6 +583,7 @@ class TC_GAME_API Battleground : public ZoneScript
         uint32 m_ResetStatTimer;
         uint32 m_ValidStartPositionTimer;
         int32 m_EndTime;                                    // it is set to 120000 when bg is ending and it decreases itself
+        uint32 m_LastResurrectTime;
         uint8  m_ArenaType;                                 // 2=2v2, 3=3v3, 5=5v5
         bool   m_InBGFreeSlotQueue;                         // used to make sure that BG is only once inserted into the BattlegroundMgr.BGFreeSlotQueue[bgTypeId] deque
         bool   m_SetDeleteThis;                             // used for safe deletion of the bg after end / all players leave
@@ -591,6 +596,7 @@ class TC_GAME_API Battleground : public ZoneScript
         uint32 m_LastPlayerPositionBroadcast;
 
         // Player lists
+        GuidVector m_ResurrectQueue;                        // Player GUID
         GuidDeque m_OfflineQueue;                           // Player GUID
 
         // Invited counters are useful for player invitation to BG - do not allow, if BG is started to one faction to have 2 more players than another faction
