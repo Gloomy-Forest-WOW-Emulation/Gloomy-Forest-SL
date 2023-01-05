@@ -81,14 +81,10 @@ void SmartWaypointMgr::LoadFromDB()
         float x = fields[2].GetFloat();
         float y = fields[3].GetFloat();
         float z = fields[4].GetFloat();
-
         Optional<float> o;
         if (!fields[5].IsNull())
             o = fields[5].GetFloat();
-
-        float velocity = fields[6].GetFloat();
-        uint32 delay = fields[7].GetUInt32();
-        bool smoothTransition = fields[8].GetBool();
+        uint32 delay = fields[6].GetUInt32();
 
         if (lastEntry != entry)
         {
@@ -102,8 +98,8 @@ void SmartWaypointMgr::LoadFromDB()
         ++lastId;
 
         WaypointPath& path = _waypointStore[entry];
-        path.Id = entry;
-        path.Nodes.emplace_back(id, x, y, z, o, velocity, delay, smoothTransition);
+        path.id = entry;
+        path.nodes.emplace_back(id, x, y, z, o, delay);
 
         lastEntry = entry;
         ++total;
@@ -623,7 +619,6 @@ bool SmartAIMgr::IsTargetValid(SmartScriptHolder const& e)
         case SMART_TARGET_LOOT_RECIPIENTS:
         case SMART_TARGET_VEHICLE_PASSENGER:
         case SMART_TARGET_CLOSEST_UNSPAWNED_GAMEOBJECT:
-        case SMART_TARGET_OWNER_OR_SUMMONER_VICTIM:
             break;
         default:
             TC_LOG_ERROR("sql.sql", "SmartAIMgr: Not handled target_type(%u), Entry " SI64FMTD " SourceType %u Event %u Action %u, skipped.", e.GetTargetType(), e.entryOrGuid, e.GetScriptType(), e.event_id, e.GetActionType());
@@ -1855,7 +1850,7 @@ bool SmartAIMgr::IsEventValid(SmartScriptHolder& e)
         case SMART_ACTION_WP_START:
         {
             WaypointPath const* path = sSmartWaypointMgr->GetPath(e.action.wpStart.pathID);
-            if (!path || path->Nodes.empty())
+            if (!path || path->nodes.empty())
             {
                 TC_LOG_ERROR("sql.sql", "SmartAIMgr: Creature " SI64FMTD " Event %u Action %u uses non-existent WaypointPath id %u, skipped.", e.entryOrGuid, e.event_id, e.GetActionType(), e.action.wpStart.pathID);
                 return false;

@@ -217,7 +217,6 @@ class TC_GAME_API CreatureAI : public UnitAI
 
         /// == Waypoints system =============================
 
-        virtual void WaypointPathStarted(uint32 /*pathId*/) { }
         virtual void WaypointStarted(uint32 /*nodeId*/, uint32 /*pathId*/) { }
         virtual void WaypointReached(uint32 /*nodeId*/, uint32 /*pathId*/) { }
         virtual void WaypointPathEnded(uint32 /*nodeId*/, uint32 /*pathId*/) { }
@@ -245,12 +244,6 @@ class TC_GAME_API CreatureAI : public UnitAI
 
         static bool IsInBounds(CreatureBoundary const& boundary, Position const* who);
         bool IsInBoundary(Position const* who = nullptr) const;
-
-        // Called when a player queries the spirit healer timer information
-        // return true to prevent automatic SMSG_AREA_SPIRIT_HEALER_TIME
-        virtual bool OnSpiritHealerQuery(Player* /*player*/) { return false; }
-        // Called when a player joins spirit healer queue
-        virtual void OnSpiritHealerQueue(Player* /*player*/) { }
 
     protected:
         void EngagementStart(Unit* who);

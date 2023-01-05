@@ -15050,69 +15050,15 @@ void Player::RewardQuest(Quest const* quest, LootItemType rewardType, uint32 rew
         UpdatePvPState();
     }
 
-    SendQuestGiverStatusMultiple();
+    SendQuestUpdate(quest_id);
 
-    SendQuestUpdate(quest_id, false);
+    SendQuestGiverStatusMultiple();
 
     //lets remove flag for delayed teleports
     SetCanDelayTeleport(false);
 
-    bool canHaveNextQuest = !quest->HasFlag(QUEST_FLAGS_AUTOCOMPLETE) ? !questGiver->IsPlayer() : true;
-    if (canHaveNextQuest)
-    {
-        switch (questGiver->GetTypeId())
-        {
-            case TYPEID_UNIT:
-            case TYPEID_PLAYER:
-            {
-                //For AutoSubmition was added plr case there as it almost same exclute AI script cases.
-                // Send next quest
-                if (Quest const* nextQuest = GetNextQuest(questGiver->GetGUID(), quest))
-                {
-                    // Only send the quest to the player if the conditions are met
-                    if (CanTakeQuest(nextQuest, false))
-                    {
-                        if (nextQuest->IsAutoAccept() && CanAddQuest(nextQuest, true))
-                            AddQuestAndCheckCompletion(nextQuest, questGiver);
-
-                        PlayerTalkClass->SendQuestGiverQuestDetails(nextQuest, questGiver->GetGUID(), true, false);
-                    }
-                }
-
-                PlayerTalkClass->ClearMenus();
-                if (Creature* creatureQGiver = questGiver->ToCreature())
-                    creatureQGiver->AI()->OnQuestReward(this, quest, rewardType, rewardId);
-                break;
-            }
-            case TYPEID_GAMEOBJECT:
-            {
-                GameObject* questGiverGob = questGiver->ToGameObject();
-                // Send next quest
-                if (Quest const* nextQuest = GetNextQuest(questGiverGob->GetGUID(), quest))
-                {
-                    // Only send the quest to the player if the conditions are met
-                    if (CanTakeQuest(nextQuest, false))
-                    {
-                        if (nextQuest->IsAutoAccept() && CanAddQuest(nextQuest, true))
-                            AddQuestAndCheckCompletion(nextQuest, questGiver);
-
-                        PlayerTalkClass->SendQuestGiverQuestDetails(nextQuest, questGiverGob->GetGUID(), true, false);
-                    }
-                }
-
-                PlayerTalkClass->ClearMenus();
-                questGiverGob->AI()->OnQuestReward(this, quest, rewardType, rewardId);
-                break;
-            }
-            default:
-                break;
-        }
-    }
-
     sScriptMgr->OnQuestStatusChange(this, quest_id);
     sScriptMgr->OnQuestStatusChange(this, quest, oldStatus, QUEST_STATUS_REWARDED);
-
-    UpdateObjectVisibility();
 }
 
 void Player::SetRewardedQuest(uint32 quest_id)
@@ -15803,7 +15749,7 @@ void Player::RemoveRewardedQuest(uint32 questId, bool update /*= true*/)
         SendQuestUpdate(questId);
 }
 
-void Player::SendQuestUpdate(uint32 questId, bool updateVisiblity /*= true*/)
+void Player::SendQuestUpdate(uint32 questId)
 {
     SpellAreaForQuestMapBounds saBounds = sSpellMgr->GetSpellAreaForQuestMapBounds(questId);
 
@@ -15852,7 +15798,7 @@ void Player::SendQuestUpdate(uint32 questId, bool updateVisiblity /*= true*/)
     }
 
     UpdateVisibleGameobjectsOrSpellClicks();
-    PhasingHandler::OnConditionChange(this, updateVisiblity);
+    PhasingHandler::OnConditionChange(this);
 }
 
 QuestGiverStatus Player::GetQuestDialogStatus(Object* questgiver)
@@ -28958,40 +28904,6 @@ std::string Player::GetDebugInfo() const
     std::stringstream sstr;
     sstr << Unit::GetDebugInfo();
     return sstr.str();
-}
-
-void Player::SetSpiritHealer(Creature* creature)
-{
-    if (!creature)
-    {
-        _spiritHealerGuid = ObjectGuid::Empty;
-        RemoveAurasDueToSpell(SPELL_WAITING_FOR_RESURRECT);
-        return;
-    }
-
-    if (!creature->IsSpiritService())
-        return;
-
-    _spiritHealerGuid = creature->GetGUID();
-    CastSpell(this, SPELL_WAITING_FOR_RESURRECT);
-}
-
-void Player::SendAreaSpiritHealerQueryOpcode(ObjectGuid const& spiritHealerGuid) const
-{
-    int32 timeLeft = 0;
-    if (Creature* creature = GetMap()->GetCreature(spiritHealerGuid))
-        if (Spell* spell = creature->GetCurrentSpell(CURRENT_CHANNELED_SPELL))
-            timeLeft = spell->GetTimer();
-
-    SendAreaSpiritHealerQueryOpcode(spiritHealerGuid, timeLeft);
-}
-
-void Player::SendAreaSpiritHealerQueryOpcode(ObjectGuid const& spiritHealerGuid, int32 timeLeft) const
-{
-    WorldPackets::Battleground::AreaSpiritHealerTime areaSpiritHealerTime;
-    areaSpiritHealerTime.HealerGuid = spiritHealerGuid;
-    areaSpiritHealerTime.TimeLeft = timeLeft;
-    SendDirectMessage(areaSpiritHealerTime.Write());
 }
 
 void Player::SendDisplayToast(uint32 entry, DisplayToastType type, bool isBonusRoll, uint32 quantity, DisplayToastMethod method, uint32 questId, Item* item /*= nullptr*/) const

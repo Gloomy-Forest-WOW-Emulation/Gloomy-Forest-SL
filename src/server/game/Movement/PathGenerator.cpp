@@ -20,7 +20,6 @@
 #include "DetourCommon.h"
 #include "DetourNavMeshQuery.h"
 #include "DisableMgr.h"
-#include "G3DPosition.hpp"
 #include "Log.h"
 #include "MMapFactory.h"
 #include "MMapManager.h"
@@ -55,29 +54,31 @@ PathGenerator::~PathGenerator()
     TC_LOG_DEBUG("maps.mmaps", "++ PathGenerator::~PathGenerator() for %s", _source->GetGUID().ToString().c_str());
 }
 
-bool PathGenerator::CalculatePath(float destX, float destY, float destZ, bool forceDest /*= false*/)
+bool PathGenerator::CalculatePath(float destX, float destY, float destZ, bool forceDest)
 {
-    return CalculatePath(PositionToVector3(_source->GetPosition()), G3D::Vector3(destX, destY, destZ), forceDest);
-}
+    float x, y, z;
+    _source->GetPosition(x, y, z);
 
-bool PathGenerator::CalculatePath(G3D::Vector3 const& startPoint, G3D::Vector3 const& endPoint, bool forceDest /*= false*/)
-{
-    if (!Trinity::IsValidMapCoord(startPoint.x, startPoint.y, startPoint.z) || !Trinity::IsValidMapCoord(endPoint.x, endPoint.y, endPoint.z))
+    if (!Trinity::IsValidMapCoord(destX, destY, destZ) || !Trinity::IsValidMapCoord(x, y, z))
         return false;
 
-    TC_METRIC_EVENT("mmap_events", "CalculatePath", "");
+    TC_METRIC_DETAILED_EVENT("mmap_events", "CalculatePath", "");
 
-    SetEndPosition(endPoint);
-    SetStartPosition(startPoint);
+    G3D::Vector3 dest(destX, destY, destZ);
+    SetEndPosition(dest);
+
+    G3D::Vector3 start(x, y, z);
+    SetStartPosition(start);
 
     _forceDestination = forceDest;
 
     TC_LOG_DEBUG("maps.mmaps", "++ PathGenerator::CalculatePath() for %s", _source->GetGUID().ToString().c_str());
-    // Let's make sure navMesh works. We can run on map without mmaps.
-    // Check if the start and end point have a .mmtile loaded (can we pass via not loaded tile on the way?).
-    const Unit* _sourceUnit = _source->ToUnit();
+
+    // make sure navMesh works - we can run on map w/o mmap
+    // check if the start and end point have a .mmtile loaded (can we pass via not loaded tile on the way?)
+    Unit const* _sourceUnit = _source->ToUnit();
     if (!_navMesh || !_navMeshQuery || (_sourceUnit && _sourceUnit->HasUnitState(UNIT_STATE_IGNORE_PATHFINDING)) ||
-        !HaveTile(startPoint) || !HaveTile(endPoint))
+        !HaveTile(start) || !HaveTile(dest))
     {
         BuildShortcut();
         _type = PathType(PATHFIND_NORMAL | PATHFIND_NOT_USING_PATH);
@@ -86,9 +87,8 @@ bool PathGenerator::CalculatePath(G3D::Vector3 const& startPoint, G3D::Vector3 c
 
     UpdateFilter();
 
-    BuildPolyPath(startPoint, endPoint);
+    BuildPolyPath(start, dest);
     return true;
-
 }
 
 dtPolyRef PathGenerator::GetPathPolyByPosition(dtPolyRef const* polyPath, uint32 polyPathSize, float const* point, float* distance) const

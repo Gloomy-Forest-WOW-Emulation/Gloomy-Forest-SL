@@ -588,10 +588,6 @@ void GameObject::AddToWorld()
         if (m_zoneScript)
             m_zoneScript->OnGameObjectCreate(this);
 
-        if (BattlegroundMap* bgMap = GetMap()->ToBattlegroundMap())
-            if (Battleground* bg = bgMap->GetBG())
-                bg->OnGameObjectCreate(this);
-
         GetMap()->GetObjectsStore().Insert<GameObject>(GetGUID(), this);
         if (m_spawnId)
             GetMap()->GetGameObjectBySpawnIdStore().insert(std::make_pair(m_spawnId, this));
@@ -618,10 +614,6 @@ void GameObject::RemoveFromWorld()
     {
         if (m_zoneScript)
             m_zoneScript->OnGameObjectRemove(this);
-
-        if (BattlegroundMap* bgMap = GetMap()->ToBattlegroundMap())
-            if (Battleground* bg = bgMap->GetBG())
-                bg->OnGameObjectRemove(this);
 
         RemoveFromOwner();
         if (m_model)
@@ -1447,7 +1439,11 @@ void GameObject::Delete()
     if (GameObjectOverride const* goOverride = GetGameObjectOverride())
         ReplaceAllFlags(GameObjectFlags(goOverride->Flags));
 
-    AddObjectToRemoveList();
+    uint32 poolid = GetGameObjectData() ? GetGameObjectData()->poolId : 0;
+    if (poolid)
+        sPoolMgr->UpdatePool<GameObject>(GetMap()->GetPoolData(), poolid, GetSpawnId());
+    else
+        AddObjectToRemoveList();
 }
 
 void GameObject::SendGameObjectDespawn()
@@ -4014,7 +4010,7 @@ bool GameObject::IsAtInteractDistance(Position const& pos, float radius) const
 
 bool GameObject::IsWithinDistInMap(Player const* player) const
 {
-    return IsInMap(player) && IsInPhase(player) && IsAtInteractDistance(player);
+    return IsInMap(player) && InSamePhase(player) && IsAtInteractDistance(player);
 }
 
 SpellInfo const* GameObject::GetSpellForLock(Player const* player) const
