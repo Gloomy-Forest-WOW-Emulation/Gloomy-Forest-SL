@@ -16,12 +16,17 @@
  */
 
 #include "SpellAuras.h"
+#include "SpellScript.h"
 #include "ScriptMgr.h"
+#include "Unit.h"
 #include "ruby_life_pools.h"
 
-enum Misc
+enum RLPSpells
 {
+    // Flashfrost Chillweaver
     SPELL_ICE_SHIELD = 372749,
+
+    // Primal Juggernaut
     SPELL_EXCAVATE   = 373497
 };
 

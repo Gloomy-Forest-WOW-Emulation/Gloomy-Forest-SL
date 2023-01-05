@@ -32,7 +32,7 @@
 #include "Log.h"
 #include "Map.h"
 #include "MotionMaster.h"
-#include <MovementTypedefs.h>
+#include "MovementTypedefs.h"
 #include "ObjectAccessor.h"
 #include "ObjectMgr.h"
 #include "PhasingHandler.h"
@@ -1673,7 +1673,7 @@ void SmartScript::ProcessAction(SmartScriptHolder& e, Unit* unit, uint32 var0, u
                 break;
 
             ObjectVector casters;
-            GetTargets(casters, CreateSmartEvent(SMART_EVENT_UPDATE_IC, 0, 0, 0, 0, 0, 0, SMART_ACTION_NONE, 0, 0, 0, 0, 0, 0, (SMARTAI_TARGETS)e.action.crossCast.targetType, e.action.crossCast.targetParam1, e.action.crossCast.targetParam2, e.action.crossCast.targetParam3, 0, 0), unit);
+            GetTargets(casters, CreateSmartEvent(SMART_EVENT_UPDATE_IC, 0, 0, 0, 0, 0, 0, SMART_ACTION_NONE, 0, 0, 0, 0, 0, 0, 0, (SMARTAI_TARGETS)e.action.crossCast.targetType, e.action.crossCast.targetParam1, e.action.crossCast.targetParam2, e.action.crossCast.targetParam3, 0, 0), unit);
 
             for (WorldObject* caster : casters)
             {
@@ -2065,17 +2065,17 @@ void SmartScript::ProcessAction(SmartScriptHolder& e, Unit* unit, uint32 var0, u
                         for (uint32 pathId : waypoints)
                         {
                             WaypointPath const* path = sSmartWaypointMgr->GetPath(pathId);
-                            if (!path || path->Nodes.empty())
+                            if (!path || path->nodes.empty())
                                 continue;
 
-                            for (WaypointNode const& waypoint : path->Nodes)
+                            for (WaypointNode const& waypoint : path->nodes)
                             {
-                                float distamceToThisNode = creature->GetDistance(waypoint.X, waypoint.Y, waypoint.Z);
+                                float distamceToThisNode = creature->GetDistance(waypoint.x, waypoint.y, waypoint.z);
                                 if (distamceToThisNode < distanceToClosest)
                                 {
                                     distanceToClosest = distamceToThisNode;
                                     closest.first = pathId;
-                                    closest.second = waypoint.Id;
+                                    closest.second = waypoint.id;
                                 }
                             }
                         }
@@ -2554,7 +2554,7 @@ void SmartScript::ProcessTimedAction(SmartScriptHolder& e, uint32 const& min, ui
         RecalcTimer(e, std::min<uint32>(min, 5000), std::min<uint32>(min, 5000));
 }
 
-SmartScriptHolder SmartScript::CreateSmartEvent(SMART_EVENT e, uint32 event_flags, uint32 event_param1, uint32 event_param2, uint32 event_param3, uint32 event_param4, uint32 event_param5, SMART_ACTION action, uint32 action_param1, uint32 action_param2, uint32 action_param3, uint32 action_param4, uint32 action_param5, uint32 action_param6, SMARTAI_TARGETS t, uint32 target_param1, uint32 target_param2, uint32 target_param3, uint32 target_param4, uint32 phaseMask)
+SmartScriptHolder SmartScript::CreateSmartEvent(SMART_EVENT e, uint32 event_flags, uint32 event_param1, uint32 event_param2, uint32 event_param3, uint32 event_param4, uint32 event_param5, SMART_ACTION action, uint32 action_param1, uint32 action_param2, uint32 action_param3, uint32 action_param4, uint32 action_param5, uint32 action_param6, uint32 action_param7, SMARTAI_TARGETS t, uint32 target_param1, uint32 target_param2, uint32 target_param3, uint32 target_param4, uint32 phaseMask)
 {
     SmartScriptHolder script;
     script.event.type = e;
@@ -2574,6 +2574,7 @@ SmartScriptHolder SmartScript::CreateSmartEvent(SMART_EVENT e, uint32 event_flag
     script.action.raw.param4 = action_param4;
     script.action.raw.param5 = action_param5;
     script.action.raw.param6 = action_param6;
+    script.action.raw.param7 = action_param7;
 
     script.target.type = t;
     script.target.raw.param1 = target_param1;
@@ -2990,26 +2991,6 @@ void SmartScript::GetTargets(ObjectVector& targets, SmartScriptHolder const& e, 
         {
             if (GameObject* target = baseObject->FindNearestUnspawnedGameObject(e.target.goClosest.entry, float(e.target.goClosest.dist ? e.target.goClosest.dist : 100)))
                 targets.push_back(target);
-            break;
-        }
-        case SMART_TARGET_OWNER_OR_SUMMONER_VICTIM:
-        {
-            if (me)
-            {
-                ObjectGuid charmerOrOwnerGuid = me->GetCharmerOrOwnerGUID();
-
-                if (!charmerOrOwnerGuid)
-                    if (TempSummon* tempSummon = me->ToTempSummon())
-                        if (WorldObject* summoner = tempSummon->GetSummoner())
-                            charmerOrOwnerGuid = summoner->GetGUID();
-
-                if (!charmerOrOwnerGuid)
-                    charmerOrOwnerGuid = me->GetCreatorGUID();
-
-                if (Unit* owner = ObjectAccessor::GetUnit(*me, charmerOrOwnerGuid))
-                    if (Unit* victim = owner->GetVictim())
-                        targets.push_back(victim);
-            }
             break;
         }
         case SMART_TARGET_POSITION:
