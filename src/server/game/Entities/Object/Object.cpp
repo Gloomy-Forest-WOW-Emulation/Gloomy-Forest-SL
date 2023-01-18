@@ -57,6 +57,10 @@
 #include "VMapManager2.h"
 #include "World.h"
 #include <G3D/Vector3.h>
+#ifdef ELUNA
+#include "LuaEngine.h"
+#include "ElunaEventMgr.h"
+#endif
 #include <sstream>
 
 constexpr float VisibilityDistances[AsUnderlyingType(VisibilityDistanceType::Max)] =
@@ -83,6 +87,11 @@ Object::Object() : m_values(this)
 
 WorldObject::~WorldObject()
 {
+#ifdef ELUNA
+    delete ElunaEvents;
+    ElunaEvents = NULL;
+#endif
+	
     // this may happen because there are many !create/delete
     if (IsWorldObject() && m_currMap)
     {
@@ -861,11 +870,18 @@ void MovementInfo::OutDebug()
 
 WorldObject::WorldObject(bool isWorldObject) : Object(), WorldLocation(), LastUsedScriptID(0),
 m_movementInfo(), m_name(), m_isActive(false), m_isFarVisible(false), m_isWorldObject(isWorldObject), m_zoneScript(nullptr),
-m_transport(nullptr), m_zoneId(0), m_areaId(0), m_staticFloorZ(VMAP_INVALID_HEIGHT), m_outdoors(false), m_liquidStatus(LIQUID_MAP_NO_WATER),
+ElunaEvents(NULL), m_transport(nullptr), m_zoneId(0), m_areaId(0), m_staticFloorZ(VMAP_INVALID_HEIGHT), m_outdoors(false), m_liquidStatus(LIQUID_MAP_NO_WATER),
 m_currMap(nullptr), m_InstanceId(0), _dbPhase(0), m_notifyflags(0)
 {
     m_serverSideVisibility.SetValue(SERVERSIDE_VISIBILITY_GHOST, GHOST_VISIBILITY_ALIVE | GHOST_VISIBILITY_GHOST);
     m_serverSideVisibilityDetect.SetValue(SERVERSIDE_VISIBILITY_GHOST, GHOST_VISIBILITY_ALIVE);
+}
+
+void WorldObject::Update(uint32 time_diff)
+{
+#ifdef ELUNA
+    ElunaEvents->Update(time_diff);
+#endif
 }
 
 void WorldObject::SetWorldObject(bool on)
@@ -913,29 +929,15 @@ void WorldObject::setActive(bool on)
 void WorldObject::SetVisibilityDistanceOverride(VisibilityDistanceType type)
 {
     ASSERT(type < VisibilityDistanceType::Max);
-    if (GetTypeId() == TYPEID_PLAYER)
+    return SetVisibilityDistanceOverride(VisibilityDistances[AsUnderlyingType(type)]);
+}
+
+    void WorldObject::SetVisibilityDistanceOverride(float distance)
+{
+			if(GetTypeId() == TYPEID_PLAYER)
         return;
 
-    if (Creature* creature = ToCreature())
-    {
-        creature->RemoveUnitFlag2(UNIT_FLAG2_LARGE_AOI | UNIT_FLAG2_GIGANTIC_AOI | UNIT_FLAG2_INFINITE_AOI);
-        switch (type)
-        {
-            case VisibilityDistanceType::Large:
-                creature->SetUnitFlag2(UNIT_FLAG2_LARGE_AOI);
-                break;
-            case VisibilityDistanceType::Gigantic:
-                creature->SetUnitFlag2(UNIT_FLAG2_GIGANTIC_AOI);
-                break;
-            case VisibilityDistanceType::Infinite:
-                creature->SetUnitFlag2(UNIT_FLAG2_INFINITE_AOI);
-                break;
-            default:
-                break;
-        }
-    }
-
-    m_visibilityDistanceOverride = VisibilityDistances[AsUnderlyingType(type)];
+    m_visibilityDistanceOverride = distance;
 }
 
 void WorldObject::SetFarVisible(bool on)
@@ -1493,6 +1495,15 @@ bool WorldObject::CanSeeOrDetect(WorldObject const* obj, bool ignoreStealth, boo
     if (!obj->IsPrivateObject() && !sConditionMgr->IsObjectMeetingVisibilityByObjectIdConditions(obj->GetTypeId(), obj->GetEntry(), this))
         return false;
 
+	if (const GameObject* object = obj->ToGameObject()) {
+        const std::set<ObjectGuid> infinites = object->GetMap()->GetInfiniteGameObjects();
+        if (std::find(infinites.begin(), infinites.end(), object->GetGUID()) != infinites.end()) {
+            float distance = GetDistance(obj);
+            //TC_LOG_ERROR("misc", "[+) WorldObject::CanSeeOrDetect(Infinite) : %f ", distance);
+            return true && (distance <= object->GetVisibilityRange());
+        }
+    }
+
     bool corpseVisibility = false;
     if (distanceCheck)
     {
@@ -1766,6 +1777,13 @@ void WorldObject::SetMap(Map* map)
     m_currMap = map;
     m_mapId = map->GetId();
     m_InstanceId = map->GetInstanceId();
+	
+#ifdef ELUNA
+    delete ElunaEvents;
+    // On multithread replace this with a pointer to map's Eluna pointer stored in a map
+    ElunaEvents = new ElunaEventProcessor(&Eluna::GEluna, this);
+#endif
+	
     if (IsWorldObject())
         m_currMap->AddWorldObject(this);
 }
@@ -1776,6 +1794,12 @@ void WorldObject::ResetMap()
     ASSERT(!IsInWorld());
     if (IsWorldObject())
         m_currMap->RemoveWorldObject(this);
+	
+#ifdef ELUNA
+    delete ElunaEvents;
+    ElunaEvents = NULL;
+#endif
+	
     m_currMap = nullptr;
     //maybe not for corpse
     //m_mapId = 0;

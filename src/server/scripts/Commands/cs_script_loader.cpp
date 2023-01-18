@@ -23,6 +23,7 @@ void AddSC_arena_commandscript();
 void AddSC_ban_commandscript();
 void AddSC_battlenet_account_commandscript();
 void AddSC_bf_commandscript();
+void AddSC_blackmarket_commandscript();
 void AddSC_cast_commandscript();
 void AddSC_character_commandscript();
 void AddSC_cheat_commandscript();
@@ -58,6 +59,7 @@ void AddSC_tele_commandscript();
 void AddSC_ticket_commandscript();
 void AddSC_titles_commandscript();
 void AddSC_wp_commandscript();
+void AddSC_customnpc_commandscript();
 
 // The name of this function should match:
 // void Add${NameOfDirectory}Scripts()
@@ -70,6 +72,7 @@ void AddCommandsScripts()
     AddSC_ban_commandscript();
     AddSC_battlenet_account_commandscript();
     AddSC_bf_commandscript();
+    AddSC_blackmarket_commandscript();
     AddSC_cast_commandscript();
     AddSC_character_commandscript();
     AddSC_cheat_commandscript();
@@ -105,4 +108,5 @@ void AddCommandsScripts()
     AddSC_ticket_commandscript();
     AddSC_titles_commandscript();
     AddSC_wp_commandscript();
+    AddSC_customnpc_commandscript();
 }

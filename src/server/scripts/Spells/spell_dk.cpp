@@ -70,7 +70,8 @@ enum DeathKnightSpells
     SPELL_DK_UNHOLY                             = 137007,
     SPELL_DK_UNHOLY_VIGOR                       = 196263,
     SPELL_DK_VOLATILE_SHIELDING                 = 207188,
-    SPELL_DK_VOLATILE_SHIELDING_DAMAGE          = 207194
+    SPELL_DK_VOLATILE_SHIELDING_DAMAGE          = 207194,
+    SPELL_DK_BREATH_OF_SINDRAGOSA               = 152279,
 };
 
 enum Misc
@@ -837,6 +838,45 @@ class spell_dk_vampiric_blood : public AuraScript
     }
 };
 
+// Breath of Sindragosa - 152279
+class spell_dk_breath_of_sindragosa : public SpellScriptLoader
+{
+public:
+    spell_dk_breath_of_sindragosa() : SpellScriptLoader("spell_dk_breath_of_sindragosa") { }
+
+    class spell_dk_breath_of_sindragosa_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(spell_dk_breath_of_sindragosa_AuraScript);
+
+        void OnTick(AuraEffect const* /*p_AurEff*/)
+        {
+            Unit* l_Caster = GetCaster();
+            if (l_Caster == nullptr)
+                return;
+
+            Player* l_Player = l_Caster->ToPlayer();
+            if (l_Player == nullptr)
+                return;
+
+            l_Caster->ModifyPower(POWER_RUNIC_POWER, -130);
+
+            if (l_Caster->GetPower(POWER_RUNIC_POWER) <= 130)
+                l_Caster->RemoveAura(SPELL_DK_BREATH_OF_SINDRAGOSA);
+
+        }
+
+        void Register() override
+        {
+            OnEffectPeriodic += AuraEffectPeriodicFn(spell_dk_breath_of_sindragosa_AuraScript::OnTick, EFFECT_0, SPELL_AURA_PERIODIC_TRIGGER_SPELL);
+        }
+    };
+
+    AuraScript* GetAuraScript() const override
+    {
+        return new spell_dk_breath_of_sindragosa_AuraScript();
+    }
+};
+
 void AddSC_deathknight_spell_scripts()
 {
     RegisterSpellScript(spell_dk_advantage_t10_4p);
@@ -862,4 +902,6 @@ void AddSC_deathknight_spell_scripts()
     RegisterSpellScript(spell_dk_raise_dead);
     RegisterSpellScript(spell_dk_rime);
     RegisterSpellScript(spell_dk_vampiric_blood);
+
+    new spell_dk_breath_of_sindragosa();
 }

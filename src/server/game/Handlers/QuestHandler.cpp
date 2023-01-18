@@ -36,6 +36,9 @@
 #include "QuestPools.h"
 #include "ReputationMgr.h"
 #include "ScriptMgr.h"
+#ifdef ELUNA
+#include "LuaEngine.h"
+#endif
 #include "World.h"
 
 void WorldSession::HandleQuestgiverStatusQueryOpcode(WorldPackets::Quest::QuestGiverStatusQuery& packet)
@@ -95,6 +98,12 @@ void WorldSession::HandleQuestgiverHelloOpcode(WorldPackets::Quest::QuestGiverHe
     creature->SetHomePosition(creature->GetPosition());
 
     _player->PlayerTalkClass->ClearMenus();
+	
+#ifdef ELUNA
+    if (sEluna->OnGossipHello(_player, creature))
+        return;
+#endif
+	
     if (creature->AI()->OnGossipHello(_player))
         return;
 
@@ -428,6 +437,11 @@ void WorldSession::HandleQuestgiverChooseRewardOpcode(WorldPackets::Quest::Quest
                     }
 
                     _player->PlayerTalkClass->ClearMenus();
+					
+#ifdef ELUNA
+                    sEluna->OnQuestReward(_player, questGiver, quest, packet.Choice.Item.ItemID);
+#endif
+					
                     questGiver->AI()->OnQuestReward(_player, quest, packet.Choice.LootItemType, packet.Choice.Item.ItemID);
                     break;
                 }

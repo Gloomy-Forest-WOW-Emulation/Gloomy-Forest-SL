@@ -75,6 +75,26 @@ enum RogueSpells
     SPELL_ROGUE_HONOR_AMONG_THIEVES_ENERGIZE        = 51699,
     SPELL_ROGUE_T5_2P_SET_BONUS                     = 37169,
     SPELL_ROGUE_VENOMOUS_WOUNDS                     = 79134,
+
+    SPELL_ROGUE_MASTER_OF_SHADOWS                   = 196976,
+    SPELL_ROGUE_SUBTERFUGE                          = 108208,
+    SPELL_ROGUE_SUBTERFUGE_AURA                     = 115192,
+    SPELL_ROGUE_GRAPPLING_HOOK_TRIGGER              = 227180,
+    SPELL_ROGUE_WOUND_POISON                        = 8679,
+    SPELL_ROGUE_DEADLY_POISON                       = 2823,
+    SPELL_ROGUE_DEADLY_POISON_DOT                   = 2818,
+    SPELL_ROGUE_DEADLY_POISON_INSTANT_DAMAGE        = 113780,
+    SPELL_ROGUE_MIND_NUMBLING_POISON                = 5761,
+    SPELL_ROGUE_CRIPPLING_POISON                    = 3409,
+    SPELL_ROGUE_CRIPPLING_POISON_DEBUFF             = 3409,
+    SPELL_ROGUE_LEECHING_POISON                     = 108211,
+    SPELL_ROGUE_LEECHING_POISON_DEBUFF              = 112961,
+    SPELL_ROGUE_PARALYTIC_POISON                    = 108215,
+    SPELL_ROGUE_PARALYTIC_POISON_DEBUFF             = 113952,
+    SPELL_ROGUE_SPELL_NIGHTSTALKER_AURA             = 14062,
+    SPELL_ROGUE_SPELL_NIGHTSTALKER_DAMAGE_DONE      = 130493,
+    SPELL_ROGUE_SPELL_SHADOW_FOCUS_AURA             = 108209,
+    SPELL_ROGUE_SPELL_SHADOW_FOCUS_COST_PCT         = 112942,
 };
 
 /* Returns true if the spell is a finishing move.
@@ -229,7 +249,7 @@ class spell_rog_deadly_poison : public SpellScript
                         continue;
 
                     // Do not reproc deadly
-                    if (spellInfo->SpellFamilyFlags & flag128(0x10000))
+                    if (spellInfo->SpellFamilyFlags & flag128(0x10000, 0x80000, 0, 0))
                         continue;
 
                     if (spellInfo->IsPositive())
@@ -706,9 +726,17 @@ class spell_rog_stealth : public AuraScript
         if (target->HasAura(SPELL_ROGUE_PREMEDITATION_PASSIVE))
             target->CastSpell(target, SPELL_ROGUE_PREMEDITATION_AURA, true);
 
+        target->RemoveAurasDueToSpell(SPELL_ROGUE_VANISH);
+        target->RemoveAurasDueToSpell(SPELL_ROGUE_VANISH_AURA);
+        target->RemoveAurasDueToSpell(SPELL_ROGUE_STEALTH_STEALTH_AURA);
+        target->RemoveAurasDueToSpell(SPELL_ROGUE_STEALTH_SHAPESHIFT_AURA);
+
         target->CastSpell(target, SPELL_ROGUE_SANCTUARY, TRIGGERED_FULL_MASK);
         target->CastSpell(target, SPELL_ROGUE_STEALTH_STEALTH_AURA, TRIGGERED_FULL_MASK);
         target->CastSpell(target, SPELL_ROGUE_STEALTH_SHAPESHIFT_AURA, TRIGGERED_FULL_MASK);
+
+        if (target->HasAura(SPELL_ROGUE_MASTER_OF_SHADOWS))
+            target->ModifyPower(POWER_ENERGY, +30);
     }
 
     void HandleEffectRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
@@ -731,11 +759,18 @@ class spell_rog_stealth : public AuraScript
         target->RemoveAurasDueToSpell(SPELL_ROGUE_SHADOW_FOCUS_EFFECT);
         target->RemoveAurasDueToSpell(SPELL_ROGUE_STEALTH_STEALTH_AURA);
         target->RemoveAurasDueToSpell(SPELL_ROGUE_STEALTH_SHAPESHIFT_AURA);
+        if (target->HasAura(SPELL_ROGUE_SUBTERFUGE))
+            target->CastSpell(target, SPELL_ROGUE_SUBTERFUGE_AURA, true);
+        if (Aura* aur = target->GetAura(SPELL_ROGUE_MASTER_OF_SUBTLETY_DAMAGE_PERCENT))
+        {
+            aur->SetMaxDuration(6000);
+            aur->SetDuration(6000);
+        }
     }
 
     void Register() override
     {
-        AfterEffectApply += AuraEffectApplyFn(spell_rog_stealth::HandleEffectApply, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
+        AfterEffectApply += AuraEffectApplyFn(spell_rog_stealth::HandleEffectApply, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL_OR_REAPPLY_MASK);
         AfterEffectRemove += AuraEffectRemoveFn(spell_rog_stealth::HandleEffectRemove, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
     }
 };
@@ -986,11 +1021,261 @@ class spell_rog_venomous_wounds : public AuraScript
     }
 };
 
+// Grappling Hook - 195457
+class spell_rog_grappling_hook : public SpellScriptLoader
+{
+public:
+    spell_rog_grappling_hook() : SpellScriptLoader("spell_rog_grappling_hook") {}
+
+    class spell_rog_grappling_hook_SpellScript : public SpellScript
+    {
+        PrepareSpellScript(spell_rog_grappling_hook_SpellScript);
+
+        bool Validate(SpellInfo const* /*spellInfo*/) override
+        {
+            return ValidateSpellInfo(
+                {
+                    SPELL_ROGUE_GRAPPLING_HOOK,
+                    SPELL_ROGUE_GRAPPLING_HOOK_TRIGGER
+                });
+        }
+
+        void HandleDummy()
+        {
+            Unit* caster = GetCaster();
+            WorldLocation const* dest = GetExplTargetDest();
+            if (!caster || !dest)
+                return;
+
+            caster->CastSpell(Position{dest->GetPositionX(), dest->GetPositionY(), dest->GetPositionZ()}, SPELL_ROGUE_GRAPPLING_HOOK_TRIGGER, true);
+        }
+
+        void Register() override
+        {
+            OnCast += SpellCastFn(spell_rog_grappling_hook_SpellScript::HandleDummy);
+        }
+    };
+
+    SpellScript* GetSpellScript() const override
+    {
+        return new spell_rog_grappling_hook_SpellScript();
+    }
+};
+
+class spell_rog_poisons : public SpellScriptLoader
+{
+public:
+    spell_rog_poisons() : SpellScriptLoader("spell_rog_poisons") { }
+
+    class spell_rog_poisons_SpellScript : public SpellScript
+    {
+        PrepareSpellScript(spell_rog_poisons_SpellScript);
+
+        void HandleOnHit()
+        {
+            if (Player* _player = GetCaster()->ToPlayer())
+            {
+                switch (GetSpellInfo()->Id)
+                {
+                case SPELL_ROGUE_WOUND_POISON:
+                {
+                    if (_player->HasAura(SPELL_ROGUE_DEADLY_POISON))
+                        _player->RemoveAura(SPELL_ROGUE_DEADLY_POISON);
+                    break;
+                }
+                case SPELL_ROGUE_MIND_NUMBLING_POISON:
+                {
+                    if (_player->HasAura(SPELL_ROGUE_CRIPPLING_POISON))
+                        _player->RemoveAura(SPELL_ROGUE_CRIPPLING_POISON);
+                    if (_player->HasAura(SPELL_ROGUE_LEECHING_POISON))
+                        _player->RemoveAura(SPELL_ROGUE_LEECHING_POISON);
+                    if (_player->HasAura(SPELL_ROGUE_PARALYTIC_POISON))
+                        _player->RemoveAura(SPELL_ROGUE_PARALYTIC_POISON);
+                    break;
+                }
+                case SPELL_ROGUE_CRIPPLING_POISON:
+                {
+                    if (_player->HasAura(SPELL_ROGUE_MIND_NUMBLING_POISON))
+                        _player->RemoveAura(SPELL_ROGUE_MIND_NUMBLING_POISON);
+                    if (_player->HasAura(SPELL_ROGUE_LEECHING_POISON))
+                        _player->RemoveAura(SPELL_ROGUE_LEECHING_POISON);
+                    if (_player->HasAura(SPELL_ROGUE_PARALYTIC_POISON))
+                        _player->RemoveAura(SPELL_ROGUE_PARALYTIC_POISON);
+                    break;
+                }
+                case SPELL_ROGUE_LEECHING_POISON:
+                {
+                    if (_player->HasAura(SPELL_ROGUE_MIND_NUMBLING_POISON))
+                        _player->RemoveAura(SPELL_ROGUE_MIND_NUMBLING_POISON);
+                    if (_player->HasAura(SPELL_ROGUE_CRIPPLING_POISON))
+                        _player->RemoveAura(SPELL_ROGUE_CRIPPLING_POISON);
+                    if (_player->HasAura(SPELL_ROGUE_PARALYTIC_POISON))
+                        _player->RemoveAura(SPELL_ROGUE_PARALYTIC_POISON);
+                    break;
+                }
+                case SPELL_ROGUE_PARALYTIC_POISON:
+                {
+                    if (_player->HasAura(SPELL_ROGUE_MIND_NUMBLING_POISON))
+                        _player->RemoveAura(SPELL_ROGUE_MIND_NUMBLING_POISON);
+                    if (_player->HasAura(SPELL_ROGUE_CRIPPLING_POISON))
+                        _player->RemoveAura(SPELL_ROGUE_CRIPPLING_POISON);
+                    if (_player->HasAura(SPELL_ROGUE_LEECHING_POISON))
+                        _player->RemoveAura(SPELL_ROGUE_LEECHING_POISON);
+                    break;
+                }
+                case SPELL_ROGUE_DEADLY_POISON:
+                {
+                    if (_player->HasAura(SPELL_ROGUE_WOUND_POISON))
+                        _player->RemoveAura(SPELL_ROGUE_WOUND_POISON);
+                    break;
+                }
+                default:
+                    break;
+                }
+            }
+        }
+
+        void Register() override
+        {
+            OnHit += SpellHitFn(spell_rog_poisons_SpellScript::HandleOnHit);
+        }
+    };
+
+    SpellScript* GetSpellScript() const override
+    {
+        return new spell_rog_poisons_SpellScript();
+    }
+};
+
+class spell_rog_deadly_poison_instant_damage : public SpellScriptLoader
+{
+public:
+    spell_rog_deadly_poison_instant_damage() : SpellScriptLoader("spell_rog_deadly_poison_instant_damage") { }
+
+    class spell_rog_deadly_poison_instant_damage_SpellScript : public SpellScript
+    {
+        PrepareSpellScript(spell_rog_deadly_poison_instant_damage_SpellScript);
+
+        void HandleOnCast()
+        {
+            if (Player* _player = GetCaster()->ToPlayer())
+                if (Unit* target = GetExplTargetUnit())
+                    if (target->HasAura(SPELL_ROGUE_DEADLY_POISON_DOT, _player->GetGUID()))
+                        _player->CastSpell(target, SPELL_ROGUE_DEADLY_POISON_INSTANT_DAMAGE, true);
+        }
+
+        void Register() override
+        {
+            OnCast += SpellCastFn(spell_rog_deadly_poison_instant_damage_SpellScript::HandleOnCast);
+        }
+    };
+
+    SpellScript* GetSpellScript() const override
+    {
+        return new spell_rog_deadly_poison_instant_damage_SpellScript();
+    }
+};
+
+// Stealth (with subterfuge) - 115191
+class spell_rog_stealth_with_subterfuge : public SpellScriptLoader
+{
+public:
+    spell_rog_stealth_with_subterfuge() : SpellScriptLoader("spell_rog_stealth_with_subterfuge") { }
+
+    class spell_rog_stealth_with_subterfuge_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(spell_rog_stealth_with_subterfuge_AuraScript);
+
+        void OnRemove(AuraEffect const* aurEff, AuraEffectHandleModes mode)
+        {
+            if (!GetCaster())
+                return;
+
+            GetCaster()->RemoveAura(115191);
+            GetCaster()->RemoveAura(115192);
+        }
+
+        void Register()
+        {
+            AfterEffectRemove += AuraEffectRemoveFn(spell_rog_stealth_with_subterfuge_AuraScript::OnRemove, EFFECT_0, SPELL_AURA_MOD_SHAPESHIFT, AURA_EFFECT_HANDLE_REAL);
+        }
+    };
+
+    AuraScript* GetAuraScript() const
+    {
+        return new spell_rog_stealth_with_subterfuge_AuraScript();
+    }
+};
+
+// Called by Stealth - 1784
+// Nightstalker - 14062
+class spell_rog_nightstalker : public SpellScriptLoader
+{
+public:
+    spell_rog_nightstalker() : SpellScriptLoader("spell_rog_nightstalker") { }
+
+    class spell_rog_nightstalker_SpellScript : public SpellScript
+    {
+        PrepareSpellScript(spell_rog_nightstalker_SpellScript);
+
+        void HandleOnHit()
+        {
+            if (Player* _player = GetCaster()->ToPlayer())
+            {
+                if (_player->HasAura(SPELL_ROGUE_SPELL_NIGHTSTALKER_AURA))
+                    _player->CastSpell(_player, SPELL_ROGUE_SPELL_NIGHTSTALKER_DAMAGE_DONE, true);
+
+                if (_player->HasAura(SPELL_ROGUE_SPELL_SHADOW_FOCUS_AURA))
+                    _player->CastSpell(_player, SPELL_ROGUE_SPELL_SHADOW_FOCUS_COST_PCT, true);
+            }
+        }
+
+        void Register()
+        {
+            OnHit += SpellHitFn(spell_rog_nightstalker_SpellScript::HandleOnHit);
+        }
+    };
+
+    SpellScript* GetSpellScript() const
+    {
+        return new spell_rog_nightstalker_SpellScript();
+    }
+
+    class spell_rog_nightstalker_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(spell_rog_nightstalker_AuraScript);
+
+        void HandleRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+        {
+            if (GetCaster())
+            {
+                // it's implemented in Unit::DealDamage
+                //if (GetCaster()->HasAura(ROGUE_SPELL_NIGHTSTALKER_DAMAGE_DONE))
+                //    GetCaster()->RemoveAura(ROGUE_SPELL_NIGHTSTALKER_DAMAGE_DONE);
+
+                if (GetCaster()->HasAura(SPELL_ROGUE_SPELL_SHADOW_FOCUS_COST_PCT))
+                    GetCaster()->RemoveAura(SPELL_ROGUE_SPELL_SHADOW_FOCUS_COST_PCT);
+            }
+        }
+
+        void Register()
+        {
+            AfterEffectRemove += AuraEffectRemoveFn(spell_rog_nightstalker_AuraScript::HandleRemove, EFFECT_0, SPELL_AURA_MOD_SHAPESHIFT, AURA_EFFECT_HANDLE_REAL);
+        }
+    };
+
+    AuraScript* GetAuraScript() const
+    {
+        return new spell_rog_nightstalker_AuraScript();
+    }
+};
+
 void AddSC_rogue_spell_scripts()
 {
     RegisterSpellScript(spell_rog_backstab);
     RegisterSpellScript(spell_rog_blade_flurry);
     RegisterSpellScript(spell_rog_deadly_poison);
+    RegisterSpellScript (spell_rog_deadly_poison_instant_damage);
     RegisterSpellScript(spell_rog_grand_melee);
     RegisterSpellAndAuraScriptPair(spell_rog_killing_spree, spell_rog_killing_spree_aura);
     RegisterSpellScript(spell_rog_mastery_main_gauche);
@@ -1011,4 +1296,9 @@ void AddSC_rogue_spell_scripts()
     RegisterSpellScript(spell_rog_eviscerate);
     RegisterSpellScript(spell_rog_envenom);
     RegisterSpellScript(spell_rog_venomous_wounds);
+
+    new spell_rog_grappling_hook();
+    new spell_rog_poisons();
+    new spell_rog_stealth_with_subterfuge();
+    new spell_rog_nightstalker();
 }
