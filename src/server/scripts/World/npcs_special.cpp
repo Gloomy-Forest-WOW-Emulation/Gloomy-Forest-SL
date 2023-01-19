@@ -1070,7 +1070,7 @@ public:
                         Start(false, true);
                     }
                     else
-                        EnterEvadeMode();                       //something went wrong
+                        EnterEvadeMode(EvadeReason::Other);                       //something went wrong
 
                     RunAwayTimer = 30000;
                 }
